@@ -203,7 +203,13 @@ window.qrScanner = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById("searchBtn").addEventListener("click", () => {
+    document.getElementById("scanBtn").addEventListener("click", () => {
+        resetState(); 
+        document.getElementById("resultsOutput").style.display = 'block';
+        updateScanStatus(false);
+        startScanner();
+    });
+    document.getElementById("scanBtn2").addEventListener("click", () => {
         resetState(); 
         document.getElementById("resultsOutput").style.display = 'block';
         updateScanStatus(false);

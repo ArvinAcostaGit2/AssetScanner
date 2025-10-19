@@ -1,4 +1,5 @@
 let pendingRecord = null;
+let pendingCallback = null; // NEW: Store callback separately
 const OBJECT_STORE_NAME = "assets";
 
 // Utility: Format timestamp in local time (UTC+8)
@@ -166,6 +167,10 @@ function compareAndConfirm(previousRecord, currentValues, callback) {
     } else {
         detectedStatus = `Update: ${additions.join(", ")} replaced ${removals.join(", ")}`;
     }
+    
+    // Store callback separately, NOT in pendingRecord
+    pendingCallback = callback;
+    
     pendingRecord = {
         location: currentValues.location,
         device1: currentValues.device1,
@@ -174,6 +179,7 @@ function compareAndConfirm(previousRecord, currentValues, callback) {
         status: detectedStatus,
         timestamp: formatLocalTimestamp(new Date())
     };
+    
     document.getElementById('confirm-location').textContent = currentValues.location;
     document.getElementById('confirm-previous').textContent =
         `${previousRecord.device1 || '(empty)'}, ${previousRecord.device2 || '(empty)'}, ${previousRecord.device3 || '(empty)'}`;
@@ -181,7 +187,6 @@ function compareAndConfirm(previousRecord, currentValues, callback) {
         `${currentValues.device1 || '(empty)'}, ${currentValues.device2 || '(empty)'}, ${currentValues.device3 || '(empty)'}`;
     document.getElementById('confirm-status').textContent = detectedStatus;
     showModal('confirm-modal');
-    pendingRecord.callback = callback;
 }
 
 // Save after confirmation
@@ -190,44 +195,63 @@ function confirmAndSave() {
         showStatusMessage("No pending record to save.", true);
         return;
     }
-    const callback = pendingRecord.callback;
+    
+    const callback = pendingCallback;
+    const hasCallback = typeof callback === 'function';
+    
     const request = indexedDB.open(window.currentDBName);
     request.onsuccess = function(event) {
         const db = event.target.result;
         const transaction = db.transaction(OBJECT_STORE_NAME, 'readwrite');
         const store = transaction.objectStore(OBJECT_STORE_NAME);
+        
+        // Add pendingRecord (without callback) to database
         const addRequest = store.add(pendingRecord);
+        
         addRequest.onsuccess = function(e) {
             showStatusMessage(`Asset entry saved for ${pendingRecord.location}.`);
             hideModal('confirm-modal');
             pendingRecord = null;
-            resetUIToInitialState();
-            if (typeof callback === 'function') callback();
+            pendingCallback = null;
+            
+            // Only reset to initial state if there's NO callback (regular SAVE)
+            // If there IS a callback (SAVE & SCAN), let the callback handle the UI
+            if (!hasCallback) {
+                resetUIToInitialState();
+            } else {
+                // For Save & Scan: just reset the form but keep it visible
+                document.getElementById('asset-form').reset();
+                if (window.checkFormValidity) window.checkFormValidity();
+                callback();
+            }
         };
         addRequest.onerror = function(e) {
             showStatusMessage("Error saving data.", true);
-            if (typeof callback === 'function') callback();
+            if (hasCallback) callback();
         };
         transaction.oncomplete = () => db.close();
         transaction.onerror = () => db.close();
     };
     request.onerror = function(event) {
         showStatusMessage("Failed to connect to the selected database.", true);
-        if (typeof callback === 'function') callback();
+        if (hasCallback) callback();
     };
 }
 
 // Cancel confirmation
 function cancelSave() {
-    const callback = pendingRecord?.callback;
+    const callback = pendingCallback;
     hideModal('confirm-modal');
     pendingRecord = null;
+    pendingCallback = null;
     showStatusMessage("Save operation cancelled.");
     if (typeof callback === 'function') callback();
 }
 
 // Save directly if no previous record
 function saveRecordDirectly(currentValues, status, callback) {
+    const hasCallback = typeof callback === 'function';
+    
     const record = {
         location: currentValues.location,
         device1: currentValues.device1,
@@ -236,6 +260,7 @@ function saveRecordDirectly(currentValues, status, callback) {
         status: status,
         timestamp: formatLocalTimestamp(new Date())
     };
+    
     const request = indexedDB.open(window.currentDBName);
     request.onsuccess = function(event) {
         const db = event.target.result;
@@ -244,19 +269,28 @@ function saveRecordDirectly(currentValues, status, callback) {
         const addRequest = store.add(record);
         addRequest.onsuccess = function(e) {
             showStatusMessage(`Asset entry saved for ${record.location}.`);
-            resetUIToInitialState();
-            if (typeof callback === 'function') callback();
+            
+            // Only reset to initial state if there's NO callback (regular SAVE)
+            // If there IS a callback (SAVE & SCAN), let the callback handle the UI
+            if (!hasCallback) {
+                resetUIToInitialState();
+            } else {
+                // For Save & Scan: just reset the form but keep it visible
+                document.getElementById('asset-form').reset();
+                if (window.checkFormValidity) window.checkFormValidity();
+                callback();
+            }
         };
         addRequest.onerror = function(e) {
             showStatusMessage("Error saving data.", true);
-            if (typeof callback === 'function') callback();
+            if (hasCallback) callback();
         };
         transaction.oncomplete = () => db.close();
         transaction.onerror = () => db.close();
     };
     request.onerror = function(event) {
         showStatusMessage("Failed to connect to the selected database.", true);
-        if (typeof callback === 'function') callback();
+        if (hasCallback) callback();
     };
 }
 
