@@ -212,6 +212,7 @@
     margin-top: 24px;
     justify-content: center;
     align-items: center;
+    flex-wrap: wrap;
   }
 
   .btn-ios {
@@ -232,7 +233,7 @@
     box-shadow: var(--shadow-xs);
   }
 
-  #searchBtn.btn-ios {
+  #scanBtn.btn-ios {
     width: 64px;
     height: 64px;
     padding: 0;
@@ -243,7 +244,7 @@
     overflow: hidden;
   }
 
-  #searchBtn.btn-ios i {
+  #scanBtn.btn-ios i {
     font-size: 24px;
     margin: 0;
   }
@@ -265,6 +266,15 @@
 
   .btn-primary-ios:hover:not(:disabled) {
     box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+  }
+
+  .btn-success-ios {
+    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+    color: white;
+  }
+
+  .btn-success-ios:hover:not(:disabled) {
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
   }
 
   .btn-secondary-ios {
@@ -436,13 +446,13 @@
       min-height: 44px;
     }
 
-    #searchBtn.btn-ios {
+    #scanBtn.btn-ios {
       width: 52px;
       height: 52px;
       border-radius: 10px;
     }
 
-    #searchBtn.btn-ios i {
+    #scanBtn.btn-ios i {
       font-size: 20px;
     }
 
@@ -457,6 +467,7 @@
 
     #save-button-container {
       margin-top: 20px;
+      gap: 8px;
     }
   }
 
@@ -471,13 +482,13 @@
       gap: 6px;
     }
 
-    #searchBtn.btn-ios {
+    #scanBtn.btn-ios {
       width: 48px;
       height: 48px;
       border-radius: 8px;
     }
 
-    #searchBtn.btn-ios i {
+    #scanBtn.btn-ios i {
       font-size: 18px;
     }
 
@@ -487,10 +498,69 @@
 
     #save-button-container {
       margin-top: 16px;
+      gap: 6px;
     }
   }
-</style>
 
+    .btn-circle {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      overflow: hidden;
+      padding: 0;
+      background: linear-gradient(145deg, #f0f0f0, #d0d0d0);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow:
+        10px 10px 20px rgba(0, 0, 0, 0.2),
+        -10px -10px 20px rgba(255, 255, 255, 0.7),
+        inset 4px 4px 8px rgba(0, 0, 0, 0.15),
+        inset -4px -4px 8px rgba(255, 255, 255, 0.9);
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+      position: relative;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+    }
+
+    .btn-circle img {
+      width: 60%;
+      height: 60%;
+      object-fit: contain;
+      transition: transform 0.1s ease;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      pointer-events: none;
+      -webkit-user-drag: none;
+      user-drag: none;
+    }
+
+  .btn-circle img {
+    width: 60%;
+    height: 60%;
+    object-fit: contain;
+    transition: transform 0.1s ease;
+  }
+
+  .btn-circle:active img {
+    transform: scale(0.92);
+  }
+
+  .staring-button-wrapper {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+</style>
 
 </head>
 
@@ -508,6 +578,7 @@
 <div class="main-container">
   <div class="frosted-glass" id="appContainer">
     <div class="container" id="resultsOutput" style="display: none;">
+
       <form id="asset-form" onsubmit="return false;">
         <div class="form-group">
           <label for="location">Location / Station</label>
@@ -526,10 +597,17 @@
           <input type="text" id="val3" name="val3" placeholder="Enter serial number" autocomplete="off">
         </div>
       </form>
+
     </div>
 
-    <div id="button-container">
-      <button class="btn-ios btn-primary-ios" id="searchBtn" title="Start QR scanning">
+    <div class="staring-button-wrapper" id="startingButtonWrapper">
+      <button class="btn-circle" id="scanBtn">
+        <img src="static/assets/svg/AA.png" alt="Button Image" />
+      </button>
+    </div>
+
+    <div id="button-container" style="display: none;">
+      <button class="btn-ios btn-primary-ios" id="scanBtn2" title="Start QR scanning">
         <i class="fas fa-qrcode"></i> SCAN
       </button>
     </div>
@@ -537,6 +615,9 @@
     <div id="save-button-container">
       <button class="btn-ios btn-primary-ios" id="save-button" title="Save asset entry">
         <i class="fas fa-check"></i> SAVE
+      </button>
+      <button class="btn-ios btn-success-ios" id="save-scan-button" title="Save and start new scan">
+        <i class="fas fa-check-double"></i> SAVE & SCAN
       </button>
     </div>
   </div>
@@ -682,6 +763,23 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+  // Function to toggle button visibility based on form state
+  function toggleButtonVisibility() {
+    const resultsOutput = document.getElementById('resultsOutput');
+    const startingButtonWrapper = document.getElementById('startingButtonWrapper');
+    const buttonContainer = document.getElementById('button-container');
+    
+    if (resultsOutput.style.display === 'none') {
+      // Form is hidden - show scanBtn, hide scanBtn2
+      startingButtonWrapper.style.display = 'flex';
+      buttonContainer.style.display = 'none';
+    } else {
+      // Form is visible - hide scanBtn, show scanBtn2
+      startingButtonWrapper.style.display = 'none';
+      buttonContainer.style.display = 'flex';
+    }
+  }
+
   // Function to toggle save button visibility based on val1
   function toggleSaveButton() {
     const val1 = document.getElementById('val1').value.trim();
@@ -689,9 +787,45 @@
     saveButtonContainer.style.display = val1.length > 0 ? 'flex' : 'none';
   }
 
-  // Initialize save button state on page load
+  // Function to start a new scan after saving
+  function startNewScanAfterSave() {
+    if (window.qrScanner && typeof window.qrScanner.resetState === 'function') {
+      window.qrScanner.resetState();
+    }
+    document.getElementById('resultsOutput').style.display = 'block';
+    if (window.qrScanner && typeof window.qrScanner.startScanner === 'function') {
+      setTimeout(() => {
+        window.qrScanner.startScanner();
+      }, 100);
+    }
+  }
+
+  // Initialize button states on page load
   document.addEventListener('DOMContentLoaded', () => {
+    toggleButtonVisibility();
     toggleSaveButton();
+    
+    // Observe changes to resultsOutput display property
+    const resultsOutput = document.getElementById('resultsOutput');
+    const observer = new MutationObserver(() => {
+      toggleButtonVisibility();
+    });
+    
+    observer.observe(resultsOutput, {
+      attributes: true,
+      attributeFilter: ['style']
+    });
+
+    // Save & Scan button handler
+    const saveScanButton = document.getElementById('save-scan-button');
+    if (saveScanButton) {
+      saveScanButton.addEventListener('click', () => {
+        if (typeof saveEntry === 'function') {
+          // Pass callback to start new scan after save completes
+          saveEntry(startNewScanAfterSave);
+        }
+      });
+    }
   });
 
   // Add input event listener for val1 to handle real-time changes
